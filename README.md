@@ -1,6 +1,6 @@
-# Aroma Base Plugin
+# mss-macro
 
-A base plugin template for Wii U Aroma with utility functions and configuration menu support.
+An Aroma plugin to simulate manual superswim.
 
 ## Installation
 
@@ -16,15 +16,13 @@ A base plugin template for Wii U Aroma with utility functions and configuration 
 
 Via the plugin config menu (press L, DPAD Down and Minus on the GamePad, Pro Controller or Classic Controller) you can configure the plugin. The available options are the following:
 
-- **Wii U Menu patches**:
-  - Avoid "Format" dialog on Wii U Menu (UStealth): (Default is false)
-    - Skips the "Format"-nag when launching the Wii U Menu with a non-formatted external drive.
-  - Skip "Shutdown warning" on boot: (Default is true)
-    - Hide the "Shutdown warning" after shutting the console down by pressing the power button for 4 seconds.
-- **Other patches**:
-  - Allow error notifications (Default is true)
-  - Fix connecting to a 3DS in Mii Maker: (Default is true)
-    - Forces "nn::ndm::SuspendDaemonsAndDisconnectIfWireless" to always return success, this fixes connecting to the 3DS in Mii Maker.
+- **Enable macro system**:
+  - Enables/Disables the functionality of the macro
+- **Enable stick inputs**:
+  - Enables/Disables the stick portion of the macro
+- **Delay Nerf**:
+  - The delay between pausing/unpausing.
+  - This exists for the purpose of nerfing this macro to be slower than RTA manual superswims
 
 ## Building
 
