@@ -4,7 +4,7 @@
 #include <vpad/input.h>
 
 //combo to start macro: L + R + DPad Down
-#define MACRO_TRIGGER_COMBO (VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_DOWN)
+#define MACRO_TRIGGER_COMBO (VPAD_BUTTON_ZR | VPAD_BUTTON_R | VPAD_BUTTON_X | VPAD_BUTTON_A)
 
 #define MACRO_DELAY_NERF_DEFAULT_MS 500
 #define MACRO_ENABLED_DEFAULT  false
