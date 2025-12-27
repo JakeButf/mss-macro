@@ -9,7 +9,8 @@
 #include <wups/storage.h>
 
 bool gMacroEnabled = MACRO_ENABLED_DEFAULT;
-int32_t gMacroDelay = MACRO_DELAY_DEFAULT;
+int32_t gMacroDelayNerf = MACRO_DELAY_NERF_DEFAULT;
+bool gMacroStickInputs = MACRO_STICK_INPUTS_DEFAULT;
 
 void boolItemChangedConfig(ConfigItemBoolean *item, bool newValue) {
     WUPSStorageError storageError;
@@ -22,6 +23,10 @@ void boolItemChangedConfig(ConfigItemBoolean *item, bool newValue) {
         gMacroEnabled = newValue;
         SetMacroEnabled(newValue);
         storageError = subItemConfig->Store(MACRO_ENABLED_CONFIG_ID, newValue);
+    } else if (std::string_view(MACRO_STICK_INPUTS_CONFIG_ID) == item->identifier) {
+        gMacroStickInputs = newValue;
+        SetMacroStickInputs(newValue);
+        storageError = subItemConfig->Store(MACRO_STICK_INPUTS_CONFIG_ID, newValue);
     } else {
         return;
     }
@@ -37,10 +42,10 @@ void intItemChangedConfig(ConfigItemIntegerRange *item, int32_t newValue) {
         DEBUG_FUNCTION_LINE_ERR("Failed to get sub item \"%s\": %s", CAT_CONFIG, WUPSStorageAPI::GetStatusStr(storageError).data());
         return;
     }
-    if (std::string_view(MACRO_DELAY_CONFIG_ID) == item->identifier) {
-        gMacroDelay = newValue;
-        SetMacroDelay(static_cast<uint32_t>(newValue));
-        storageError = subItemConfig->Store(MACRO_DELAY_CONFIG_ID, newValue);
+    if (std::string_view(MACRO_DELAY_NERF_CONFIG_ID) == item->identifier) {
+        gMacroDelayNerf = newValue;
+        SetMacroDelayNerf(static_cast<uint32_t>(newValue));
+        storageError = subItemConfig->Store(MACRO_DELAY_NERF_CONFIG_ID, newValue);
     } else {
         return;
     }
@@ -60,10 +65,15 @@ WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle ro
                                                         MACRO_ENABLED_DEFAULT, gMacroEnabled,
                                                         &boolItemChangedConfig));
 
-        macroSettings.add(WUPSConfigItemIntegerRange::Create(MACRO_DELAY_CONFIG_ID,
-                                                             "Macro delay (ms)",
-                                                             MACRO_DELAY_DEFAULT, gMacroDelay,
-                                                             10, 10000,
+        macroSettings.add(WUPSConfigItemBoolean::Create(MACRO_STICK_INPUTS_CONFIG_ID,
+                                                        "Enable stick inputs",
+                                                        MACRO_STICK_INPUTS_DEFAULT, gMacroStickInputs,
+                                                        &boolItemChangedConfig));
+
+        macroSettings.add(WUPSConfigItemIntegerRange::Create(MACRO_DELAY_NERF_CONFIG_ID,
+                                                             "Delay nerf (ms)",
+                                                             MACRO_DELAY_NERF_DEFAULT, gMacroDelayNerf,
+                                                             100, 30000,
                                                              &intItemChangedConfig));
 
         root.add(std::move(macroSettings));

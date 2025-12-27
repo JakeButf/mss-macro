@@ -32,10 +32,16 @@ void InitMacroConfigFromStorage() {
         DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", MACRO_ENABLED_CONFIG_ID);
     }
     
-    if (subItemConfig->GetOrStoreDefault(MACRO_DELAY_CONFIG_ID, gMacroDelay, MACRO_DELAY_DEFAULT) == WUPS_STORAGE_ERROR_SUCCESS) {
-        SetMacroDelay(static_cast<uint32_t>(gMacroDelay));
+    if (subItemConfig->GetOrStoreDefault(MACRO_DELAY_NERF_CONFIG_ID, gMacroDelayNerf, MACRO_DELAY_NERF_DEFAULT) == WUPS_STORAGE_ERROR_SUCCESS) {
+        SetMacroDelayNerf(static_cast<uint32_t>(gMacroDelayNerf));
     } else {
-        DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", MACRO_DELAY_CONFIG_ID);
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", MACRO_DELAY_NERF_CONFIG_ID);
+    }
+    
+    if (subItemConfig->GetOrStoreDefault(MACRO_STICK_INPUTS_CONFIG_ID, gMacroStickInputs, MACRO_STICK_INPUTS_DEFAULT) == WUPS_STORAGE_ERROR_SUCCESS) {
+        SetMacroStickInputs(gMacroStickInputs);
+    } else {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", MACRO_STICK_INPUTS_CONFIG_ID);
     }
     
     if (WUPSStorageAPI::SaveStorage() != WUPS_STORAGE_ERROR_SUCCESS) {
@@ -70,13 +76,7 @@ DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffer, uint32_t buf
     int32_t result = real_VPADRead(chan, buffer, buffer_size, &real_error);
     
     if (result > 0 && real_error == VPAD_READ_SUCCESS && buffer != nullptr) {
-        // Process macro input and get modified button state
-        uint32_t modifiedButtons = ProcessMacroInput(buffer, buffer->hold);
-        
-        // Update the buffer with modified button state
-        buffer->hold    = modifiedButtons;
-        buffer->trigger = modifiedButtons & ~buffer->release;
-        buffer->release = ~modifiedButtons & buffer->release;
+        ProcessMacroInput(buffer);
     }
     
     if (error) {

@@ -3,33 +3,51 @@
 
 #include <coreinit/time.h>
 #include <vpad/input.h>
+#include <cstring>
 
 static MacroState sMacroState = {
     .isActive = false,
     .isEnabled = MACRO_ENABLED_DEFAULT,
-    .delayMs = MACRO_DELAY_DEFAULT_MS,
+    .stickInputsEnabled = MACRO_STICK_INPUTS_DEFAULT,
+    .delayNerfMs = MACRO_DELAY_NERF_DEFAULT_MS,
     .lastExecutionTime = 0,
-    .triggerHeld = false
+    .stepStartTime = 0,
+    .triggerHeld = false,
+    .currentStep = STEP_HOLD_DOWN,
+    .stickDirectionDown = true,
+    .frameCounter = 0
 };
 
 static inline uint64_t MsToTicks(uint32_t ms) {
     return OSMillisecondsToTicks(ms);
 }
 
-void InitMacroSystem() {
-    DEBUG_FUNCTION_LINE_INFO("Initializing macro system...");
-    sMacroState.isActive          = false;
-    sMacroState.isEnabled         = MACRO_ENABLED_DEFAULT;
-    sMacroState.delayMs           = MACRO_DELAY_DEFAULT_MS;
-    sMacroState.lastExecutionTime = 0;
-    sMacroState.triggerHeld       = false;
-    DEBUG_FUNCTION_LINE_INFO("Macro system initialized. Delay: %d ms, Enabled: %d", sMacroState.delayMs, sMacroState.isEnabled);
+static inline uint32_t TicksToMs(uint64_t ticks) {
+    return OSTicksToMilliseconds(ticks);
 }
 
-uint32_t ProcessMacroInput(VPADStatus *buffer, uint32_t originalButtons) {
-    //if no macro just take input
+void InitMacroSystem() {
+    DEBUG_FUNCTION_LINE_INFO("Initializing macro system...");
+    sMacroState.isActive = false;
+    sMacroState.isEnabled = MACRO_ENABLED_DEFAULT;
+    sMacroState.stickInputsEnabled = MACRO_STICK_INPUTS_DEFAULT;
+    sMacroState.delayNerfMs = MACRO_DELAY_NERF_DEFAULT_MS;
+    sMacroState.lastExecutionTime  = 0;
+    sMacroState.stepStartTime = 0;
+    sMacroState.triggerHeld = false;
+    sMacroState.currentStep = STEP_HOLD_DOWN;
+    sMacroState.stickDirectionDown = true;
+    sMacroState.frameCounter = 0;
+    DEBUG_FUNCTION_LINE_INFO("Macro system initialized. Delay Nerf: %d ms, Stick Inputs: %d", 
+                            sMacroState.delayNerfMs, sMacroState.stickInputsEnabled);
+}
+
+void ProcessMacroInput(VPADStatus *buffer) {
+    if (!buffer) return;
+    uint32_t originalButtons = buffer->hold;
+    //if macro system is disabled just pass through original input
     if (!sMacroState.isEnabled) {
-        return originalButtons;
+        return;
     }
 
     bool triggerPressed = (originalButtons & MACRO_TRIGGER_COMBO) == MACRO_TRIGGER_COMBO;
@@ -40,35 +58,132 @@ uint32_t ProcessMacroInput(VPADStatus *buffer, uint32_t originalButtons) {
         
         if (sMacroState.isActive) {
             DEBUG_FUNCTION_LINE_INFO("Macro activated!");
-            sMacroState.lastExecutionTime = OSGetTime();
+            sMacroState.currentStep = STEP_HOLD_DOWN;
+            sMacroState.stickDirectionDown = true;
+            sMacroState.stepStartTime = OSGetTime();
+            sMacroState.frameCounter = 0;
         } else {
             DEBUG_FUNCTION_LINE_INFO("Macro deactivated!");
         }
         
-        return originalButtons & ~MACRO_TRIGGER_COMBO;
+        buffer->hold &= ~MACRO_TRIGGER_COMBO;
+        buffer->trigger &= ~MACRO_TRIGGER_COMBO;
+        return;
     } else if (!triggerPressed) {
         sMacroState.triggerHeld = false;
     }
     
     if (!sMacroState.isActive) {
-        return originalButtons;
+        return;
     }
     
     uint64_t currentTime = OSGetTime();
-    uint64_t timeSinceLastExecution = currentTime - sMacroState.lastExecutionTime;
-    uint64_t delayTicks = MsToTicks(sMacroState.delayMs);
+    uint64_t stepElapsedTime = currentTime - sMacroState.stepStartTime;
+    uint32_t stepElapsedMs = TicksToMs(stepElapsedTime);
     
-    if (timeSinceLastExecution >= delayTicks) {
-        sMacroState.lastExecutionTime = currentTime;
-        
-        uint32_t modifiedButtons = originalButtons | VPAD_BUTTON_A;
-        
-        DEBUG_FUNCTION_LINE_VERBOSE("Macro: Injecting A button press (delay: %d ms)", sMacroState.delayMs);
-        
-        return modifiedButtons;
+    switch (sMacroState.currentStep) {
+        case STEP_HOLD_DOWN:
+            if (sMacroState.stickInputsEnabled) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = -1.0f; // Down
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: Hold Down");
+            }
+            sMacroState.currentStep = STEP_PRESS_PLUS_1;
+            sMacroState.stepStartTime = currentTime;
+            
+        case STEP_PRESS_PLUS_1:
+            buffer->hold = VPAD_BUTTON_PLUS;
+            buffer->trigger = VPAD_BUTTON_PLUS;
+            if (sMacroState.stickInputsEnabled && sMacroState.currentStep == STEP_PRESS_PLUS_1) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = -1.0f;
+            }
+            
+            if (stepElapsedMs >= FRAME_TIME_MS) {
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: Press + (1)");
+                sMacroState.currentStep = STEP_WAIT_NERF;
+                sMacroState.stepStartTime = currentTime;
+            }
+            break;
+            
+        case STEP_WAIT_NERF:
+            if (sMacroState.stickInputsEnabled) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = -1.0f;
+            }
+            
+            if (stepElapsedMs >= sMacroState.delayNerfMs) {
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: Wait Nerf Complete (%d ms)", sMacroState.delayNerfMs);
+                sMacroState.currentStep = STEP_WAIT_3_FRAMES;
+                sMacroState.stepStartTime = currentTime;
+                sMacroState.frameCounter = 0;
+            }
+            break;
+            
+        case STEP_WAIT_3_FRAMES:
+            sMacroState.frameCounter = stepElapsedMs / FRAME_TIME_MS;
+            
+            if (sMacroState.stickInputsEnabled) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = -1.0f;
+            }
+            
+            if (sMacroState.frameCounter >= 1) {
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: 1 Frame Wait Complete");
+                sMacroState.currentStep = STEP_HOLD_STICK_PLUS_2;
+                sMacroState.stepStartTime = currentTime;
+            }
+            break;
+            
+        case STEP_HOLD_STICK_PLUS_2:
+            if (sMacroState.stickInputsEnabled) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = sMacroState.stickDirectionDown ? -1.0f : 1.0f;
+            }
+            buffer->hold = VPAD_BUTTON_PLUS;
+            buffer->trigger = VPAD_BUTTON_PLUS;
+            
+            if (stepElapsedMs >= FRAME_TIME_MS) {
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: Hold Stick + Press + (2), Direction: %s", 
+                                           sMacroState.stickDirectionDown ? "Down" : "Up");
+                sMacroState.currentStep = STEP_WAIT_8_FRAMES;
+                sMacroState.stepStartTime = currentTime;
+                sMacroState.frameCounter = 0;
+            }
+            break;
+            
+        case STEP_WAIT_8_FRAMES:
+            sMacroState.frameCounter = stepElapsedMs / FRAME_TIME_MS;
+            
+            if (sMacroState.stickInputsEnabled) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = sMacroState.stickDirectionDown ? -1.0f : 1.0f;
+            }
+            
+            if (sMacroState.frameCounter >= 6) {
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: 6 Frames Wait Complete");
+                sMacroState.currentStep = STEP_PRESS_PLUS_3;
+                sMacroState.stepStartTime = currentTime;
+            }
+            break;
+            
+        case STEP_PRESS_PLUS_3:
+            buffer->hold = VPAD_BUTTON_PLUS;
+            buffer->trigger = VPAD_BUTTON_PLUS;
+            
+            if (sMacroState.stickInputsEnabled) {
+                buffer->leftStick.x = 0.0f;
+                buffer->leftStick.y = sMacroState.stickDirectionDown ? -1.0f : 1.0f;
+            }
+            
+            if (stepElapsedMs >= FRAME_TIME_MS) {
+                DEBUG_FUNCTION_LINE_VERBOSE("Macro Step: Press + (3) - Cycle Complete");
+                sMacroState.stickDirectionDown = !sMacroState.stickDirectionDown;
+                sMacroState.currentStep = STEP_HOLD_DOWN;
+                sMacroState.stepStartTime = currentTime;
+            }
+            break;
     }
-    
-    return originalButtons;
 }
 
 MacroState* GetMacroState() {
@@ -87,19 +202,28 @@ void SetMacroEnabled(bool enabled) {
     DEBUG_FUNCTION_LINE_INFO("Macro system %s", enabled ? "enabled" : "disabled");
 }
 
-void SetMacroDelay(uint32_t delayMs) {
-    if (delayMs < 10) {
-        delayMs = 10;
-    } else if (delayMs > 10000) {
-        delayMs = 10000;
+void SetMacroDelayNerf(uint32_t delayNerfMs) {
+    if (delayNerfMs < 100) {
+        delayNerfMs = 100;
+    } else if (delayNerfMs > 30000) {
+        delayNerfMs = 30000;
     }
     
-    sMacroState.delayMs = delayMs;
-    DEBUG_FUNCTION_LINE_INFO("Macro delay set to %d ms", delayMs);
+    sMacroState.delayNerfMs = delayNerfMs;
+    DEBUG_FUNCTION_LINE_INFO("Macro delay nerf set to %d ms", delayNerfMs);
 }
 
-uint32_t GetMacroDelay() {
-    return sMacroState.delayMs;
+void SetMacroStickInputs(bool enabled) {
+    sMacroState.stickInputsEnabled = enabled;
+    DEBUG_FUNCTION_LINE_INFO("Macro stick inputs %s", enabled ? "enabled" : "disabled");
+}
+
+uint32_t GetMacroDelayNerf() {
+    return sMacroState.delayNerfMs;
+}
+
+bool GetMacroStickInputs() {
+    return sMacroState.stickInputsEnabled;
 }
 
 bool IsMacroActive() {

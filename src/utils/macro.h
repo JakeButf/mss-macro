@@ -3,30 +3,49 @@
 #include <cstdint>
 #include <vpad/input.h>
 
-//combo to start macro
+//combo to start macro: L + R + DPad Down
 #define MACRO_TRIGGER_COMBO (VPAD_BUTTON_L | VPAD_BUTTON_R | VPAD_BUTTON_DOWN)
 
-#define MACRO_DELAY_DEFAULT_MS 100
+#define MACRO_DELAY_NERF_DEFAULT_MS 500
 #define MACRO_ENABLED_DEFAULT  false
+#define MACRO_STICK_INPUTS_DEFAULT true
+
+#define FRAME_TIME_MS 33
+#define FRAMES_TO_MS(frames) ((frames) * FRAME_TIME_MS)
+
+enum MacroStep {
+    STEP_HOLD_DOWN = 0,
+    STEP_PRESS_PLUS_1,
+    STEP_WAIT_NERF,
+    STEP_WAIT_3_FRAMES,
+    STEP_HOLD_STICK_PLUS_2,
+    STEP_WAIT_8_FRAMES,
+    STEP_PRESS_PLUS_3,
+};
 
 struct MacroState {
     bool isActive;
     bool isEnabled;
-    uint32_t delayMs;
+    bool stickInputsEnabled;
+    uint32_t delayNerfMs;
     uint64_t lastExecutionTime;
+    uint64_t stepStartTime;
     bool triggerHeld;
+    MacroStep currentStep;
+    bool stickDirectionDown;
+    uint32_t frameCounter;
 };
 
 void InitMacroSystem();
 
-//returns modified button state
-uint32_t ProcessMacroInput(VPADStatus *buffer, uint32_t originalButtons);
+void ProcessMacroInput(VPADStatus *buffer);
 
 MacroState* GetMacroState();
 
 void SetMacroEnabled(bool enabled);
-void SetMacroDelay(uint32_t delayMs);
+void SetMacroDelayNerf(uint32_t delayNerfMs);
+void SetMacroStickInputs(bool enabled);
 
-uint32_t GetMacroDelay();
-
+uint32_t GetMacroDelayNerf();
+bool GetMacroStickInputs();
 bool IsMacroActive();
