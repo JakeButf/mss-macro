@@ -29,46 +29,6 @@ bool Utils::GetSerialId(std::string &serialID) {
     return result;
 }
 
-static inline bool existsAsFile(std::string_view path) {
-    struct stat st {};
-    if (stat(path.data(), &st) >= 0 && S_ISREG(st.st_mode)) {
-        DEBUG_FUNCTION_LINE_VERBOSE("\"%s\" exists", path.data());
-        return true;
-    } else {
-        DEBUG_FUNCTION_LINE_VERBOSE("\"%s\" doesn't exists", path.data());
-    }
-    return false;
-}
-
-/*
- * Migrates wiiu/apps/AromaUpdater.wuhb to wiiu/apps/AromaUpdater/AromaUpdater.wuhb
- */
-void Utils::MigrateAromaUpdater() {
-    bool newExists = existsAsFile(AROMA_UPDATER_NEW_PATH_FULL);
-    bool oldExists = existsAsFile(AROMA_UPDATER_OLD_PATH_FULL);
-
-    if (newExists) {
-        if (oldExists) {
-            if (remove(AROMA_UPDATER_OLD_PATH_FULL) < 0) {
-                DEBUG_FUNCTION_LINE_WARN("Failed to remove old Aroma Updater: %d", errno);
-            }
-        } else {
-            DEBUG_FUNCTION_LINE_VERBOSE("Only new AromaUpdater.wuhb exists");
-        }
-        return;
-    } else if (oldExists) {
-        if (!FSUtils::CreateSubfolder(AROMA_UPDATER_NEW_DIRECTORY_FULL)) {
-            DEBUG_FUNCTION_LINE_WARN("Failed to create \"%s\"", AROMA_UPDATER_NEW_DIRECTORY_FULL);
-        }
-
-        if (rename(AROMA_UPDATER_OLD_PATH_FULL, AROMA_UPDATER_NEW_PATH_FULL) < 0) {
-            DEBUG_FUNCTION_LINE_WARN("Failed to move Aroma Updater to new path");
-        }
-    } else {
-        DEBUG_FUNCTION_LINE_VERBOSE("No AromaUpdater.wuhb exists");
-    }
-}
-
 /*
  * Dumps the OTP and SEEPROM when if it's no exists.
  */

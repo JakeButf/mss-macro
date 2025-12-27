@@ -8,7 +8,6 @@
 namespace Utils {
     bool GetSerialId(std::string &serialID);
 
-    void MigrateAromaUpdater();
     void DumpOTPAndSeeprom();
 } // namespace Utils
 

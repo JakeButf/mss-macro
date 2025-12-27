@@ -1,6 +1,6 @@
 # Aroma Base Plugin
 
-Provides some simple patches for Wii U Menu and checks for Aroma updates.
+A base plugin template for Wii U Aroma with utility functions and configuration menu support.
 
 ## Installation
 
@@ -8,10 +8,9 @@ Provides some simple patches for Wii U Menu and checks for Aroma updates.
 
 1. Copy the file `AromaBasePlugin.wps` into `sd:/wiiu/environments/[ENVIRONMENT]/plugins`.
 2. Requires the [WiiUPluginLoaderBackend](https://github.com/wiiu-env/WiiUPluginLoaderBackend) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
-3. Requires the [CURLWrapperModule](https://github.com/wiiu-env/CURLWrapperModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
-4. Requires the [NotificationModule](https://github.com/wiiu-env/NotificationModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
-5. Requires the [RPXLoadingModule](https://github.com/wiiu-env/RPXLoadingModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
-6. Requires the [SDHotSwapModule](https://github.com/wiiu-env/SDHotSwapModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
+3. Requires the [NotificationModule](https://github.com/wiiu-env/NotificationModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
+4. Requires the [RPXLoadingModule](https://github.com/wiiu-env/RPXLoadingModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
+5. Requires the [SDHotSwapModule](https://github.com/wiiu-env/SDHotSwapModule) in `sd:/wiiu/environments/[ENVIRONMENT]/modules`.
 
 ## Usage
 

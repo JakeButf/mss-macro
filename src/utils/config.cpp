@@ -8,11 +8,8 @@
 
 bool gActivateUStealth          = ACTIVATE_USTEALTH_DEFAULT;
 bool gSkip4SecondOffStatusCheck = SKIP_4_SECOND_OFF_STATUS_CHECK_DEFAULT;
-bool gConfigMenuHintShown       = CONFIG_MENU_HINT_SHOWN_DEFAULT;
-bool gUpdateChecked             = UPDATE_CHECKED_DEFAULT;
 bool gForceNDMSuspendSuccess    = FORCE_NDM_SUSPEND_SUCCESS_DEFAULT;
 bool gAllowErrorNotifications   = ALLOW_ERROR_NOTIFICATIONS_DEFAULT;
-std::string gLastHash           = LAST_UPDATE_HASH_DEFAULT;
 
 void boolItemChangedConfig(ConfigItemBoolean *item, bool newValue) {
     WUPSStorageError storageError;

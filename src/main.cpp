@@ -1,8 +1,4 @@
 #include "main.h"
-#include "Hints.h"
-#include "UpdaterCheck.h"
-#include "utils/DownloadUtils.h"
-#include "utils/LatestVersion.h"
 #include "utils/config.h"
 #include "utils/utils.h"
 #include <utils/logger.h>
@@ -20,7 +16,7 @@
 #include <malloc.h>
 
 WUPS_PLUGIN_NAME("Aroma Base Plugin");
-WUPS_PLUGIN_DESCRIPTION("Implements small patches and checks for Aroma updates.");
+WUPS_PLUGIN_DESCRIPTION("Base plugin template with utility functions.");
 WUPS_PLUGIN_VERSION(PLUGIN_VERSION_FULL);
 WUPS_PLUGIN_AUTHOR("Maschell");
 WUPS_PLUGIN_LICENSE("GPL");
@@ -54,20 +50,7 @@ bool InitConfigValuesFromStorage() {
         }
     }
 
-    auto subItemOther = WUPSStorageAPI::GetOrCreateSubItem(CAT_OTHER, storageError);
-    if (!subItemOther) {
-        DEBUG_FUNCTION_LINE_ERR("Failed to get or create sub category \"%s\"", CAT_OTHER);
-        result = false;
-    } else {
-        if ((storageError = subItemOther->GetOrStoreDefault(CONFIG_MENU_HINT_SHOWN_ID, gConfigMenuHintShown, CONFIG_MENU_HINT_SHOWN_DEFAULT)) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\": %s", CONFIG_MENU_HINT_SHOWN_ID, WUPSStorageAPI_GetStatusStr(storageError));
-            result = false;
-        }
-        if ((storageError = subItemOther->GetOrStoreDefault(LAST_UPDATE_HASH_ID, gLastHash, LAST_UPDATE_HASH_DEFAULT)) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\": %s", LAST_UPDATE_HASH_ID, WUPSStorageAPI_GetStatusStr(storageError));
-            result = false;
-        }
-    }
+
 
     if (WUPSStorageAPI::SaveStorage() != WUPS_STORAGE_ERROR_SUCCESS) {
         DEBUG_FUNCTION_LINE_ERR("Failed to save storage");
@@ -98,27 +81,14 @@ INITIALIZE_PLUGIN() {
 
     InitConfigMenu();
 
-    Utils::MigrateAromaUpdater();
-
     Utils::DumpOTPAndSeeprom();
 }
 
 ON_APPLICATION_START() {
     initLogging();
-    uint64_t titleID = OSGetTitleID();
-    if (titleID == 0x0005001010040000L || // Wii U Menu
-        titleID == 0x0005001010040100L ||
-        titleID == 0x0005001010040200L) {
-
-        StartHintThread();
-        StartUpdaterCheckThread();
-    }
 }
 
 ON_APPLICATION_ENDS() {
-    StopHintThread();
-    StopUpdaterCheckThread();
-    DownloadUtils::Deinit();
     deinitLogging();
 }
 
