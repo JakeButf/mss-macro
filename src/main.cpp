@@ -1,87 +1,56 @@
 #include "main.h"
 #include "utils/config.h"
-#include "utils/utils.h"
+#include "utils/macro.h"
 #include <utils/logger.h>
-
-#include <mocha/mocha.h>
-#include <notifications/notifications.h>
-#include <rpxloader/rpxloader.h>
-#include <sdutils/sdutils.h>
 
 #include <wups.h>
 
-#include <coreinit/title.h>
-#include <nn/spm.h>
+#include <vpad/input.h>
 
 #include <malloc.h>
 
-WUPS_PLUGIN_NAME("Aroma Base Plugin");
-WUPS_PLUGIN_DESCRIPTION("Base plugin template with utility functions.");
+WUPS_PLUGIN_NAME("mss-macro");
+WUPS_PLUGIN_DESCRIPTION("MSS macro plugin.");
 WUPS_PLUGIN_VERSION(PLUGIN_VERSION_FULL);
-WUPS_PLUGIN_AUTHOR("Maschell");
+WUPS_PLUGIN_AUTHOR("JakeZSR");
 WUPS_PLUGIN_LICENSE("GPL");
 
 WUPS_USE_WUT_DEVOPTAB();
-WUPS_USE_STORAGE("aroma_base_plugin"); // Unique id for the storage api
+WUPS_USE_STORAGE("mss-macro"); // Unique id for the storage api
 
-bool InitConfigValuesFromStorage() {
-    bool result = true;
+void InitMacroConfigFromStorage() {
     WUPSStorageError storageError;
     auto subItemConfig = WUPSStorageAPI::GetOrCreateSubItem(CAT_CONFIG, storageError);
     if (!subItemConfig) {
-        DEBUG_FUNCTION_LINE_ERR("Failed to get or create sub category \"%s\"", CAT_CONFIG);
-        result = false;
-    } else {
-        if (subItemConfig->GetOrStoreDefault(USTEALTH_CONFIG_ID, gActivateUStealth, ACTIVATE_USTEALTH_DEFAULT) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", USTEALTH_CONFIG_ID);
-            result = false;
-        }
-        if (subItemConfig->GetOrStoreDefault(POWEROFFWARNING_CONFIG_ID, gSkip4SecondOffStatusCheck, SKIP_4_SECOND_OFF_STATUS_CHECK_DEFAULT) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", POWEROFFWARNING_CONFIG_ID);
-            result = false;
-        }
-        if (subItemConfig->GetOrStoreDefault(FORCE_NDM_SUSPEND_SUCCESS_CONFIG_ID, gForceNDMSuspendSuccess, FORCE_NDM_SUSPEND_SUCCESS_DEFAULT) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", FORCE_NDM_SUSPEND_SUCCESS_CONFIG_ID);
-            result = false;
-        }
-        if (subItemConfig->GetOrStoreDefault(ALLOW_ERROR_NOTIFICATIONS, gAllowErrorNotifications, ALLOW_ERROR_NOTIFICATIONS_DEFAULT) != WUPS_STORAGE_ERROR_SUCCESS) {
-            DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", ALLOW_ERROR_NOTIFICATIONS);
-            result = false;
-        }
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create sub category \"%s\" for macro config", CAT_CONFIG);
+        return;
     }
-
-
-
+    
+    if (subItemConfig->GetOrStoreDefault(MACRO_ENABLED_CONFIG_ID, gMacroEnabled, MACRO_ENABLED_DEFAULT) == WUPS_STORAGE_ERROR_SUCCESS) {
+        SetMacroEnabled(gMacroEnabled);
+    } else {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", MACRO_ENABLED_CONFIG_ID);
+    }
+    
+    if (subItemConfig->GetOrStoreDefault(MACRO_DELAY_CONFIG_ID, gMacroDelay, MACRO_DELAY_DEFAULT) == WUPS_STORAGE_ERROR_SUCCESS) {
+        SetMacroDelay(static_cast<uint32_t>(gMacroDelay));
+    } else {
+        DEBUG_FUNCTION_LINE_ERR("Failed to get or create item \"%s\"", MACRO_DELAY_CONFIG_ID);
+    }
+    
     if (WUPSStorageAPI::SaveStorage() != WUPS_STORAGE_ERROR_SUCCESS) {
         DEBUG_FUNCTION_LINE_ERR("Failed to save storage");
-        result = false;
     }
-
-    return result;
 }
 
 
 INITIALIZE_PLUGIN() {
     initLogging();
-    if (NotificationModule_InitLibrary() != NOTIFICATION_MODULE_RESULT_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("NotificationModule_InitLibrary failed");
-    }
-    if (RPXLoader_InitLibrary() != RPX_LOADER_RESULT_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("RPXLoader_InitLibrary failed");
-    }
-    if (SDUtils_InitLibrary() != SDUTILS_RESULT_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("SDUtils_InitLibrary failed");
-    }
 
-    if (Mocha_InitLibrary() != MOCHA_RESULT_SUCCESS) {
-        DEBUG_FUNCTION_LINE_ERR("Mocha_InitLibrary failed");
-    }
-
-    InitConfigValuesFromStorage();
+    InitMacroSystem();
+    InitMacroConfigFromStorage();
 
     InitConfigMenu();
-
-    Utils::DumpOTPAndSeeprom();
 }
 
 ON_APPLICATION_START() {
@@ -93,47 +62,28 @@ ON_APPLICATION_ENDS() {
 }
 
 DEINITIALIZE_PLUGIN() {
-    NotificationModule_DeInitLibrary();
-    RPXLoader_DeInitLibrary();
-    SDUtils_DeInitLibrary();
+    deinitLogging();
 }
 
-DECL_FUNCTION(uint32_t, SuspendDaemonsAndDisconnectIfWireless__Q2_2nn3ndmFv) {
-    auto res = real_SuspendDaemonsAndDisconnectIfWireless__Q2_2nn3ndmFv();
-
-    if (res != 0) {
-        DEBUG_FUNCTION_LINE_ERR("SuspendDaemonsAndDisconnectIfWireless__Q2_2nn3ndmFv returned %08X", res);
-        if (res == 0xA0B12C80 && gForceNDMSuspendSuccess) {
-            DEBUG_FUNCTION_LINE_INFO("Patch SuspendDaemonsAndDisconnectIfWireless__Q2_2nn3ndmFv to return 0 instead of %08X", res);
-            return 0;
-        } else if (gAllowErrorNotifications) {
-            NotificationModule_SetDefaultValue(NOTIFICATION_MODULE_NOTIFICATION_TYPE_ERROR, NOTIFICATION_MODULE_DEFAULT_OPTION_DURATION_BEFORE_FADE_OUT, 10.0f);
-            NotificationModule_AddErrorNotification("\"nn::ndm::SuspendDaemonsAndDisconnectIfWireless\" failed. Connection to 3DS not possible");
-        }
+DECL_FUNCTION(int32_t, VPADRead, VPADChan chan, VPADStatus *buffer, uint32_t buffer_size, VPADReadError *error) {
+    VPADReadError real_error;
+    int32_t result = real_VPADRead(chan, buffer, buffer_size, &real_error);
+    
+    if (result > 0 && real_error == VPAD_READ_SUCCESS && buffer != nullptr) {
+        // Process macro input and get modified button state
+        uint32_t modifiedButtons = ProcessMacroInput(buffer, buffer->hold);
+        
+        // Update the buffer with modified button state
+        buffer->hold    = modifiedButtons;
+        buffer->trigger = modifiedButtons & ~buffer->release;
+        buffer->release = ~modifiedButtons & buffer->release;
     }
-    return res;
-}
-
-DECL_FUNCTION(int32_t, IsStorageMaybePcFormatted, bool *isPcFormatted, nn::spm::StorageIndex *index) {
-    // Make sure the index is valid
-    int32_t res = real_IsStorageMaybePcFormatted(isPcFormatted, index);
-    if (gActivateUStealth && res == 0) {
-        // always return false which makes the Wii U menu stop nagging about this drive
-        *isPcFormatted = false;
+    
+    if (error) {
+        *error = real_error;
     }
-
-    return res;
+    
+    return result;
 }
 
-DECL_FUNCTION(bool, MCP_Get4SecondOffStatus, int32_t handle) {
-    if (gSkip4SecondOffStatusCheck) {
-        return false;
-    }
-
-    return real_MCP_Get4SecondOffStatus(handle);
-}
-
-// Only replace for the Wii U Menu
-WUPS_MUST_REPLACE_FOR_PROCESS(IsStorageMaybePcFormatted, WUPS_LOADER_LIBRARY_NN_SPM, IsStorageMaybePcFormatted__Q2_2nn3spmFPbQ3_2nn3spm12StorageIndex, WUPS_FP_TARGET_PROCESS_WII_U_MENU);
-WUPS_MUST_REPLACE_FOR_PROCESS(MCP_Get4SecondOffStatus, WUPS_LOADER_LIBRARY_COREINIT, MCP_Get4SecondOffStatus, WUPS_FP_TARGET_PROCESS_WII_U_MENU);
-WUPS_MUST_REPLACE(SuspendDaemonsAndDisconnectIfWireless__Q2_2nn3ndmFv, WUPS_LOADER_LIBRARY_NN_NDM, SuspendDaemonsAndDisconnectIfWireless__Q2_2nn3ndmFv);
+WUPS_MUST_REPLACE(VPADRead, WUPS_LOADER_LIBRARY_VPAD, VPADRead);

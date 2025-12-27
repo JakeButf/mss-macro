@@ -6,19 +6,13 @@
 
 #define CAT_CONFIG                             "config"
 
-#define USTEALTH_CONFIG_ID                     "ustealth"
-#define POWEROFFWARNING_CONFIG_ID              "SkipPowerOffWarning"
-#define FORCE_NDM_SUSPEND_SUCCESS_CONFIG_ID    "forceNDMSuspendSuccess"
-#define ALLOW_ERROR_NOTIFICATIONS              "allowErrorNotifications"
+#define MACRO_ENABLED_CONFIG_ID                "macroEnabled"
+#define MACRO_DELAY_CONFIG_ID                  "macroDelay"
 
-#define ACTIVATE_USTEALTH_DEFAULT              false
-#define SKIP_4_SECOND_OFF_STATUS_CHECK_DEFAULT true
-#define FORCE_NDM_SUSPEND_SUCCESS_DEFAULT      true
-#define ALLOW_ERROR_NOTIFICATIONS_DEFAULT      true
+#define MACRO_ENABLED_DEFAULT                  false
+#define MACRO_DELAY_DEFAULT                    100
 
-extern bool gActivateUStealth;
-extern bool gSkip4SecondOffStatusCheck;
-extern bool gForceNDMSuspendSuccess;
-extern bool gAllowErrorNotifications;
+extern bool gMacroEnabled;
+extern int32_t gMacroDelay;
 
 void InitConfigMenu();
