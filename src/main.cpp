@@ -1,9 +1,11 @@
 #include "main.h"
 #include "utils/config.h"
 #include "utils/macro.h"
+#include "utils/watermark.h"
 #include <utils/logger.h>
 
 #include <wups.h>
+#include <notifications/notifications.h>
 
 #include <vpad/input.h>
 
@@ -52,15 +54,21 @@ void InitMacroConfigFromStorage() {
 
 INITIALIZE_PLUGIN() {
     initLogging();
+    
+    if (NotificationModule_InitLibrary() != NOTIFICATION_MODULE_RESULT_SUCCESS) {
+        DEBUG_FUNCTION_LINE_ERR("Failed to initialize notification module");
+    }
 
     InitMacroSystem();
     InitMacroConfigFromStorage();
+    InitWatermark();
 
     InitConfigMenu();
 }
 
 ON_APPLICATION_START() {
     initLogging();
+    InitWatermark();
 }
 
 ON_APPLICATION_ENDS() {
@@ -68,6 +76,8 @@ ON_APPLICATION_ENDS() {
 }
 
 DEINITIALIZE_PLUGIN() {
+    DeinitWatermark();
+    NotificationModule_DeInitLibrary();
     deinitLogging();
 }
 

@@ -1,5 +1,6 @@
 #include "macro.h"
 #include "logger.h"
+#include "watermark.h"
 
 #include <coreinit/time.h>
 #include <vpad/input.h>
@@ -54,10 +55,15 @@ void ProcessMacroInput(VPADStatus *buffer) {
         sMacroState.isActive = !sMacroState.isActive;
         
         if (sMacroState.isActive) {
+            DEBUG_FUNCTION_LINE_INFO("Macro activated!");
             sMacroState.currentStep = STEP_HOLD_DOWN;
             sMacroState.stickDirectionDown = true;
             sMacroState.stepStartTime = OSGetTime();
             sMacroState.frameCounter = 0;
+            ShowWatermark();
+        } else {
+            DEBUG_FUNCTION_LINE_INFO("Macro deactivated!");
+            HideWatermark();
         }
         
         buffer->hold &= ~MACRO_TRIGGER_COMBO;
@@ -182,6 +188,7 @@ void SetMacroEnabled(bool enabled) {
     
     if (!enabled && wasActive) {
         sMacroState.isActive = false;
+        HideWatermark();
     }
 }
 
@@ -191,10 +198,18 @@ void SetMacroDelayNerf(uint32_t delayNerfMs) {
     }
     
     sMacroState.delayNerfMs = delayNerfMs;
+    
+    if (sMacroState.isActive) {
+        UpdateWatermark();
+    }
 }
 
 void SetMacroStickInputs(bool enabled) {
     sMacroState.stickInputsEnabled = enabled;
+    
+    if (sMacroState.isActive) {
+        UpdateWatermark();
+    }
 }
 
 uint32_t GetMacroDelayNerf() {
