@@ -186,9 +186,7 @@ void SetMacroEnabled(bool enabled) {
 }
 
 void SetMacroDelayNerf(uint32_t delayNerfMs) {
-    if (delayNerfMs < 100) {
-        delayNerfMs = 100;
-    } else if (delayNerfMs > 30000) {
+    if (delayNerfMs > 30000) {
         delayNerfMs = 30000;
     }
     

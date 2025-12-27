@@ -73,7 +73,7 @@ WUPSConfigAPICallbackStatus ConfigMenuOpenedCallback(WUPSConfigCategoryHandle ro
         macroSettings.add(WUPSConfigItemIntegerRange::Create(MACRO_DELAY_NERF_CONFIG_ID,
                                                              "Delay nerf (ms)",
                                                              MACRO_DELAY_NERF_DEFAULT, gMacroDelayNerf,
-                                                             100, 30000,
+                                                             0, 30000,
                                                              &intItemChangedConfig));
 
         root.add(std::move(macroSettings));
