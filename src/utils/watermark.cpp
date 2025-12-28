@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <cstring>
 
-#define WATERMARK_VERSION "v0.1.1"
+#define WATERMARK_VERSION "v0.1.3"
 
 static NotificationModuleHandle sWatermarkHandle = 0;
 static bool sWatermarkVisible = false;
